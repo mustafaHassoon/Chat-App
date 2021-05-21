@@ -10,6 +10,11 @@ import AsyncStorage from '@react-native-community/async-storage';
 
 import NetInfo from "@react-native-community/netinfo";
 
+// import * as Location from 'expo-location';
+import MapView from 'react-native-maps';
+
+import CustomActions from './CustomActions';
+
 // const NetInfo = require("@react-native-community/netinfo");
 
 export default class Chat extends React.Component {
@@ -41,6 +46,10 @@ export default class Chat extends React.Component {
       firebase.initializeApp(firebaseConfig);
     }
 
+
+    //referance the user
+    this.referenceChatUser = null;
+    // reference to messages collection
     this.referenceChatMessages = firebase.firestore().collection("messages");
   }
 
@@ -129,7 +138,13 @@ export default class Chat extends React.Component {
         _id: data._id,
         text: data.text,
         createdAt: data.createdAt.toDate(),
-        user: data.user
+        user: {
+          _id: data.user._id,
+          name: data.user.name,
+          avatar: data.user.avatar
+        },
+        image: data.image || '',
+        location: data.location || null
       });
     });
     this.setState({ messages });
@@ -152,9 +167,15 @@ export default class Chat extends React.Component {
     const message = this.state.messages[0];
     this.referenceChatMessages.add({
       _id: message._id,
-      text: message.text,
+      text: message.text || '',
       createdAt: message.createdAt,
-      user: message.user,
+      user: {
+        _id: message.user._id,
+        name: message.user.name,
+        avatar: message.user.avatar,
+      },
+      image: message.image || '',
+      location: message.location || null
     });
   }
 
@@ -199,7 +220,10 @@ export default class Chat extends React.Component {
         {...props}
         wrapperStyle={{
           right: {
-            backgroundColor: '#000'
+            backgroundColor: '#F28C28'
+          },
+          left: {
+            backgroundColor: '#FFF5EE'
           }
         }}
       />
@@ -213,10 +237,40 @@ export default class Chat extends React.Component {
       return (
         <InputToolbar
           {...props}
+
         />
       );
     }
   }
+
+  //show map location
+  renderCustomView(props) {
+    const { currentMessage } = props;
+    if (currentMessage.location) {
+      // console.log(currentMessage, currentMessage[0], currentMessage.location.longitude)
+      return (
+        <MapView
+          style={{
+            width: 150,
+            height: 100,
+            borderRadius: 13,
+            margin: 3
+          }}
+          region={{
+            latitude: currentMessage.location.latitude,
+            longitude: currentMessage.location.longitude,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        />
+      )
+    }
+  }
+
+  //custom small + to take picture/upload picture/locaiton
+  renderCustomActions = (props) => {
+    return <CustomActions {...props} />;
+  };
 
   render() {
     //gets name prop from start screen text input and displays name at top of chat
@@ -229,7 +283,22 @@ export default class Chat extends React.Component {
       <View
         style={{ flex: 1, backgroundColor: color }}
       >
+
+        <Text style={styles.userName}>
+          {this.props.route.params.name} joined the chat
+        </Text>
+
+        {this.state.image && (
+          <Image
+            source={{ uri: this.state.image.uri }}
+            style={{ width: 200, height: 200 }}
+          />
+        )}
+
         <GiftedChat
+          renderCustomView={this.renderCustomView}
+          renderActions={this.renderCustomActions}
+
           renderBubble={this.renderBubble.bind(this)}
           renderInputToolbar={this.renderInputToolbar.bind(this)}
           style={{ backgroundColor: color }}
@@ -247,3 +316,20 @@ export default class Chat extends React.Component {
     )
   }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userName: {
+    fontSize: 10,
+    color: "#fff",
+    alignSelf: "center",
+    opacity: 0.5,
+    marginTop: 25
+  }
+
+});
